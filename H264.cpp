@@ -5,6 +5,15 @@
 #include <functional>
 #include "H264.h"
 #include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/core/cuda.hpp"
+#include "opencv2/imgproc.hpp"
+
+// #include <opencv2/cudaarithm.hpp>
+// #include <opencv2/cudaimgproc.hpp>
+// #include <opencv2/cudafilters.hpp>
+// #include <opencv2/cudafeatures2d.hpp>
+// #include <opencv2/cudalegacy.hpp>
+// #include "opencv2/cudacodec.hpp"
 
 // std::mutex Orchestrator::_buffMutex; // This would not compile ...
 std::mutex buffMutex; // This is to protect reading buffer.empty() and storing to the same buffer in different threads
@@ -47,8 +56,6 @@ int main(int argc, char *filename[])
         orcherstrator.setVideoDecoder(make_unique<VideoStreamDecoder>());
         orcherstrator.setVideoProcessor(make_unique<VideoStreamProcessor>());
         return orcherstrator.run();
-
-        return true;
     }
     catch (std::exception &e)
     {
@@ -58,6 +65,7 @@ int main(int argc, char *filename[])
     {
         cout << "Unknown exception caught.." << endl;
     }
+    return 0;
 }
 
 void VideoStreamDecoder::decode(VideoCapture &source, queue<Mat> &outBuffer, AVideoStreamProcessor &processor)
@@ -173,6 +181,20 @@ void VideoStreamProcessor::applyOperation(Mat &frame) const
 
     cv::bitwise_not(frame, frame, mask);
     cv::cvtColor(frame, frame, cv::COLOR_HSV2BGR);
+}
+
+void VideoStreamProcessor::applyOperation(cv::cuda::GpuMat &frame) const
+{
+    // Convert the image into an HSV image using CUDA
+    cv::cuda::cvtColor(frame, frame, cv::COLOR_BGR2HSV);
+
+    // Replace the yellow color(s) with black using CUDA
+    cv::cuda::GpuMat mask;
+    cv::cuda::inRange(frame, cv::Scalar(20, 30, 50), cv::Scalar(50, 255, 255), mask);
+    cv::cuda::bitwise_not(frame, frame, mask);
+
+    // Convert the image back to BGR format using CUDA
+    cv::cuda::cvtColor(frame, frame, cv::COLOR_HSV2BGR);
 }
 
 bool Orchestrator::run()
