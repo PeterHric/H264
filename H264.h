@@ -16,13 +16,13 @@ using namespace cv;
 
 class AVideoStreamProcessor;
 
-//const unsigned int wait_ms = 24;
+// const unsigned int wait_ms = 24;
 const unsigned int wait_ms = 1;
 const float nanosec_2_sec = .000'000'001; // Converts nano seconds to seconds: 5000'000'000 [ns] * nanosec_2_sec = 5s
 
 /**
-* @brief: Counts video processor statistics
-*/
+ * @brief: Counts video processor statistics
+ */
 class AStatsCounter
 {
 public:
@@ -43,7 +43,7 @@ public:
 
 protected:
     // @brief: Counter statistics
-    unsigned long  _framesProcessed = 0;
+    unsigned long _framesProcessed = 0;
     float _avgSpeed_fps = 0;
     float _processingTime_s = 0;
 
@@ -52,8 +52,8 @@ protected:
 };
 
 /**
-* @brief: Implementation of video processor statistics counter using ctime
-*/
+ * @brief: Implementation of video processor statistics counter using ctime
+ */
 class StatsCounter : public AStatsCounter
 {
 public:
@@ -64,10 +64,13 @@ public:
         _processingTime_s = time(0) - _startTime;
         _avgSpeed_fps = _framesProcessed / _processingTime_s;
 
-        cout << endl << "Processed frames: " << _framesProcessed << endl;
+        cout << endl
+             << "Processed frames: " << _framesProcessed << endl;
         cout << std::setprecision(2) << std::fixed;
-        cout << endl << "Processing time: " << _processingTime_s << " [s]" << endl;
-        cout << endl << "Average speed: " << _avgSpeed_fps << " [fps]" << endl;
+        cout << endl
+             << "Processing time: " << _processingTime_s << " [s]" << endl;
+        cout << endl
+             << "Average speed: " << _avgSpeed_fps << " [fps]" << endl;
     }
 
     inline void startCount()
@@ -78,9 +81,9 @@ public:
 };
 
 /**
-* @brief: Implementation of video processor statistics counter std::chrono
-*         Achieves better time precision
-*/
+ * @brief: Implementation of video processor statistics counter std::chrono
+ *         Achieves better time precision
+ */
 class StatsCounterChrono : public AStatsCounter
 {
 public:
@@ -92,10 +95,13 @@ public:
         _processingTime_s = (nowTime - _startTime) * nanosec_2_sec;
         _avgSpeed_fps = _framesProcessed / _processingTime_s;
 
-        cout << endl << "Processed frames: " << _framesProcessed << endl;
+        cout << endl
+             << "Processed frames: " << _framesProcessed << endl;
         std::cout << std::setprecision(2) << std::fixed;
-        cout << endl << "Processing time: " << _processingTime_s << " [s]" << endl;
-        cout << endl << "Average speed: " << _avgSpeed_fps << " [fps]" << endl;
+        cout << endl
+             << "Processing time: " << _processingTime_s << " [s]" << endl;
+        cout << endl
+             << "Average speed: " << _avgSpeed_fps << " [fps]" << endl;
     }
 
     inline void startCount()
@@ -106,28 +112,28 @@ public:
 };
 
 /**
-*  @brief: Interface for all sort of video workers
-*/
+ *  @brief: Interface for all sort of video workers
+ */
 class IStoppable
 {
 public:
     /**
-    * @brief: Sets flag for thread immediate termination
-    */
+     * @brief: Sets flag for thread immediate termination
+     */
     virtual void setQuit(bool value) = 0;
 };
 
 /**
-*  @brief: Base class for all sort of video workers
-*/
+ *  @brief: Base class for all sort of video workers
+ */
 class VideoStreamWorker : public IStoppable
 {
 public:
     /**
-    * @brief: Sets flag for thread immediate termination
-    * 
-    * @param: [IN] value - true for worker loop quit
-    */
+     * @brief: Sets flag for thread immediate termination
+     *
+     * @param: [IN] value - true for worker loop quit
+     */
     inline void setQuit(bool value) override
     {
         _quitLoop = value;
@@ -135,102 +141,112 @@ public:
 
 protected:
     // @brief: flag for immediate thread quit
-    atomic<bool> _quitLoop{ false };
+    atomic<bool> _quitLoop{false};
 };
 
 /**
-* @brief: Decodes the video stream and decomposes to individual frames
-*/
+ * @brief: Decodes the video stream and decomposes to individual frames
+ */
 class AVideoStreamDecoder : public VideoStreamWorker
 {
 public:
     virtual ~AVideoStreamDecoder() = default;
 
     /*
-    * @breif:  Decodes the stream to the output buffer
-    *
-    * @param: [IN] source - the data source of video frames
-    * @param: [IN/OUT] outBuffer - where to store the individual decoded frames
-    * @param: [IN] whenDoneCallback - to be called to announce end of processing
-    */         
-    virtual void decode(VideoCapture& source, queue<Mat>& outBuffer, AVideoStreamProcessor& processor) = 0;
-    //virtual void decode(VideoCapture& source, queue<Mat>& outBuffer, std::function<void()> whenDoneCallback) = 0;
+     * @breif:  Decodes the stream to the output buffer
+     *
+     * @param: [IN] source - the data source of video frames
+     * @param: [IN/OUT] outBuffer - where to store the individual decoded frames
+     * @param: [IN] whenDoneCallback - to be called to announce end of processing
+     */
+    virtual void decode(VideoCapture &source, queue<Mat> &outBuffer, AVideoStreamProcessor &processor) = 0;
+    // virtual void decode(VideoCapture& source, queue<Mat>& outBuffer, std::function<void()> whenDoneCallback) = 0;
 };
-
 
 class VideoStreamDecoder : public AVideoStreamDecoder
 {
 public:
     ~VideoStreamDecoder() = default;
 
-    void decode(VideoCapture& source, queue<Mat>& outBuffer, AVideoStreamProcessor& processor) override;
-    //void decode(VideoCapture& source, queue<Mat>& outBuffer, std::function<void()> whenDoneCallback) override;
+    void decode(VideoCapture &source, queue<Mat> &outBuffer, AVideoStreamProcessor &processor) override;
+    // void decode(VideoCapture& source, queue<Mat>& outBuffer, std::function<void()> whenDoneCallback) override;
 
     std::function<void()> decodingEndedCallback;
 };
 
 /**
-* @brief: Applies defined operation on the decoded video stream
-*/
+ * @brief: Applies defined operation on the decoded video stream
+ */
 class AVideoStreamProcessor : public VideoStreamWorker
 {
 public:
     virtual ~AVideoStreamProcessor() = default;
-    
-    /*
-    * @breif:  Processes the video stream from the input buffer
-    *
-    * @param: [IN] winName - name of the playback window
-    * @param: [IN] inBuffer - source video stream
-    */
-    virtual void process(const string& winName, queue<Mat>& inBuffer, AStatsCounter& counter) const = 0;
 
     /*
-    * @breif: Applies the selected opeartion on the image
-    *
-    * @param: [IN/OUT] frame - the image frame to be applied with operation
-    */
-    virtual void applyOperation(Mat& frame) const = 0;
+     * @breif:  Processes the video stream from the input buffer
+     *
+     * @param: [IN] winName - name of the playback window
+     * @param: [IN] inBuffer - source video stream
+     */
+    virtual void process(const string &winName, queue<Mat> &inBuffer, AStatsCounter &counter) const = 0;
+
+    /*
+     * @breif: Applies the selected opeartion on the image
+     * Note:   Uses normal CPU domain for processing
+     *
+     * @param: [IN/OUT] frame - the image frame to be applied with operation
+     */
+    virtual void applyOperation(Mat &frame) const = 0;
+
+    /*
+     * @breif: Applies the selected opeartion on the image
+     * Note:   Enabled to be executed on GPU Cuda domain
+     * Uasge:
+     *
+     * @param: [IN/OUT] frame - the image frame to be applied with operation
+     */
+    virtual void applyOperation(cv::cuda::GpuMat &frame) const = 0;
 
     /// @brief: Sets thread stop condition to given value
-    inline void setDone(bool  value)
+    inline void setDone(bool value)
     {
         _decodingDone.store(value);
     }
 
     /// @brief: Gets thread stop condition
-    inline bool getDone() { return _decodingDone.load(); }    
+    inline bool getDone() { return _decodingDone.load(); }
 
 protected:
     // @brief: Signalises the thread function whether to continue or quit.
-    atomic<bool> _decodingDone{ false };
+    atomic<bool> _decodingDone{false};
 };
 
 /**
-* @brief: Specialized implementation for our yellow filter
-*/
+ * @brief: Specialized implementation for our yellow filter
+ */
 class VideoStreamProcessor : public AVideoStreamProcessor
 {
 public:
     ~VideoStreamProcessor() = default;
-    void process(const string& winName, queue<Mat>& inBuffer, AStatsCounter& counter) const override;
+    void process(const string &winName, queue<Mat> &inBuffer, AStatsCounter &counter) const override;
 
     // This is to protect reading buffer.empty() and storing to the same buffer in different threads
-    //static std::mutex _buffMutex;
+    // static std::mutex _buffMutex;
 
 private:
-    void applyOperation(Mat& frame) const override;
+    void applyOperation(Mat &frame) const override;
+
+    void applyOperation(cv::cuda::GpuMat &frame) const override;
 };
 
 /**
-* Organizes the orcehster of threads to maximize the performance
-*/
+ * Organizes the orcehster of threads to maximize the performance
+ */
 class Orchestrator
 {
 
 public:
-    explicit Orchestrator(VideoCapture& capture) :
-        _videoSource(capture)
+    explicit Orchestrator(VideoCapture &capture) : _videoSource(capture)
     {
     }
 
@@ -254,7 +270,7 @@ public:
 private:
     /// @brief: The video decoding object
     std::unique_ptr<AVideoStreamDecoder> _videoDecoder;
-    
+
     /// @brief: The video processing object
     std::unique_ptr<AVideoStreamProcessor> _videoProcessor;
 
@@ -262,7 +278,7 @@ private:
     std::unique_ptr<AStatsCounter> _statsCounter;
 
     /// @brief: Producer - consumer lock mechanism
-    //std::counting_semaphore<1> _semaphore;
+    // std::counting_semaphore<1> _semaphore;
 
     /// @brief: The buffer of frames decoded from src file, stored here -> to be processed and displayed
     std::queue<cv::Mat> _buffer;
@@ -270,8 +286,8 @@ private:
     // https://docs.microsoft.com/en-us/cpp/parallel/concrt/reference/concurrent-queue-class?view=vs-2019
 
     // Or use BOOST lock-free structure: https://www.boost.org/doc/libs/1_53_0/doc/html/lockfree.html
-    //boost::lockfree::spsc_queue<cv::Mat> _cBuffer;  -> i.e. circullar buffer
+    // boost::lockfree::spsc_queue<cv::Mat> _cBuffer;  -> i.e. circullar buffer
 
     /// @brief: The video to be processed and displayed
-    VideoCapture& _videoSource;
+    VideoCapture &_videoSource;
 };

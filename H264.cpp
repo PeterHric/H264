@@ -1,15 +1,25 @@
-// Lomtec_H264.cpp : This file contains the 'main' function. Program execution begins and ends there.
+// H264.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
 #include <thread>
 #include <functional>
-#include "Lomtec_H264.h"
+#include "H264.h"
 #include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/core/cuda.hpp"
+#include "opencv2/imgproc.hpp"
 
-//std::mutex Orchestrator::_buffMutex; // This would not compile ...
+// #include <opencv2/cudaarithm.hpp>
+// #include <opencv2/cudaimgproc.hpp>
+// #include <opencv2/cudafilters.hpp>
+// #include <opencv2/cudafeatures2d.hpp>
+// #include <opencv2/cudalegacy.hpp>
+// #include "opencv2/cudacodec.hpp"
+
+// std::mutex Orchestrator::_buffMutex; // This would not compile ...
 std::mutex buffMutex; // This is to protect reading buffer.empty() and storing to the same buffer in different threads
 
-int main(int argc, char* filename[]) {        
+int main(int argc, char *filename[])
+{
     try
     {
         cv::CommandLineParser parser(argc, filename, "{help h||}{@input||}");
@@ -25,9 +35,9 @@ int main(int argc, char* filename[]) {
             return -1;
         }
 
-        VideoCapture capture(arg, cv::CAP_FFMPEG);  // cv::CAP_ANY | cv::CAP_FFMPEG         
+        VideoCapture capture(arg, cv::CAP_FFMPEG); // cv::CAP_ANY | cv::CAP_FFMPEG
 
-        if (!capture.isOpened()) //if this fails, try to open as a video camera, through the use of an integer param
+        if (!capture.isOpened()) // if this fails, try to open as a video camera, through the use of an integer param
         {
             auto name = arg.c_str();
             std::cout << "The file: " << name << " could not be open. Incompatible file format, or corrupt data ? Trying to open PC's web-cam.." << endl;
@@ -41,16 +51,13 @@ int main(int argc, char* filename[]) {
         }
 
         Orchestrator orcherstrator(capture);
-        //orcherstrator.setStatsCounter(make_unique<StatsCounter>());  // Choose one of possible implementations
+        // orcherstrator.setStatsCounter(make_unique<StatsCounter>());  // Choose one of possible implementations
         orcherstrator.setStatsCounter(make_unique<StatsCounterChrono>());
         orcherstrator.setVideoDecoder(make_unique<VideoStreamDecoder>());
         orcherstrator.setVideoProcessor(make_unique<VideoStreamProcessor>());
         return orcherstrator.run();
-        
-
-        return true;
     }
-    catch (std::exception& e)
+    catch (std::exception &e)
     {
         cout << "Error encountered !  Description: " << e.what() << endl;
     }
@@ -58,12 +65,13 @@ int main(int argc, char* filename[]) {
     {
         cout << "Unknown exception caught.." << endl;
     }
+    return 0;
 }
 
-void VideoStreamDecoder::decode(VideoCapture& source, queue<Mat>& outBuffer, AVideoStreamProcessor& processor)
+void VideoStreamDecoder::decode(VideoCapture &source, queue<Mat> &outBuffer, AVideoStreamProcessor &processor)
 {
-    thread feedWorker([&]() 
-    {
+    thread feedWorker([&]()
+                      {
         string window_name = "Original video";
         //namedWindow(window_name, WINDOW_KEEPRATIO);
         Mat frame;
@@ -98,16 +106,15 @@ void VideoStreamDecoder::decode(VideoCapture& source, queue<Mat>& outBuffer, AVi
 
         // Yeeey, we are done reading !
         processor.setDone(true); // Let the world know !
-        cout << "Decoded and passed: " << frameCnt << " frames for processing" << endl;
-    });
+        cout << "Decoded and passed: " << frameCnt << " frames for processing" << endl; });
 
     feedWorker.detach();
 }
 
-void VideoStreamProcessor::process(const string& winName, queue<Mat>& inBuffer, AStatsCounter& counter) const
-{    
+void VideoStreamProcessor::process(const string &winName, queue<Mat> &inBuffer, AStatsCounter &counter) const
+{
     thread processWorker([&]() // Or use std::async
-    {
+                         {
         namedWindow(winName, WINDOW_AUTOSIZE); //resizable window; WINDOW_KEEPRATIO | WINDOW_AUTOSIZE | WINDOW_FULLSCREEN
         Mat frame;
 
@@ -153,33 +160,45 @@ void VideoStreamProcessor::process(const string& winName, queue<Mat>& inBuffer, 
             inBuffer.pop();            
         }
 
-        counter.printStatistics();
-    });
+        counter.printStatistics(); });
 
     processWorker.detach();
 }
 
-
-void VideoStreamProcessor::applyOperation(Mat& frame) const
+void VideoStreamProcessor::applyOperation(Mat &frame) const
 {
     // Convert the image into an HSV image
     cv::cvtColor(frame, frame, cv::COLOR_BGR2HSV);
 
     // Replace the yellow color(s) with black
     Mat mask;
-    //cv::inRange(frame, cv::Scalar(60,0,0), cv::Scalar(60,255,255), mask);
-    //cv::inRange(frame, cv::Scalar(61, 100, 100), cv::Scalar(120, 255, 255), mask); // Glare & glow
-    //cv::inRange(frame, cv::Scalar(61, 30, 50), cv::Scalar(80, 255, 255), mask);  // Green
-    cv::inRange(frame, cv::Scalar(20, 30, 50), cv::Scalar(50, 255, 255), mask);  // Yelow ?
-    //imshow("mask", mask);
-    //waitKey(wait_ms);
+    // cv::inRange(frame, cv::Scalar(60,0,0), cv::Scalar(60,255,255), mask);
+    // cv::inRange(frame, cv::Scalar(61, 100, 100), cv::Scalar(120, 255, 255), mask); // Glare & glow
+    // cv::inRange(frame, cv::Scalar(61, 30, 50), cv::Scalar(80, 255, 255), mask);  // Green
+    cv::inRange(frame, cv::Scalar(20, 30, 50), cv::Scalar(50, 255, 255), mask); // Yelow ?
+    // imshow("mask", mask);
+    // waitKey(wait_ms);
 
     cv::bitwise_not(frame, frame, mask);
     cv::cvtColor(frame, frame, cv::COLOR_HSV2BGR);
 }
 
+void VideoStreamProcessor::applyOperation(cv::cuda::GpuMat &frame) const
+{
+    // Convert the image into an HSV image using CUDA
+    cv::cuda::cvtColor(frame, frame, cv::COLOR_BGR2HSV);
+
+    // Replace the yellow color(s) with black using CUDA
+    cv::cuda::GpuMat mask;
+    cv::cuda::inRange(frame, cv::Scalar(20, 30, 50), cv::Scalar(50, 255, 255), mask);
+    cv::cuda::bitwise_not(frame, frame, mask);
+
+    // Convert the image back to BGR format using CUDA
+    cv::cuda::cvtColor(frame, frame, cv::COLOR_HSV2BGR);
+}
+
 bool Orchestrator::run()
-{    
+{
     if (nullptr == _statsCounter.get())
     {
         cout << "Error: Statistic counter has not been set ! Exitting..." << endl;
@@ -191,7 +210,7 @@ bool Orchestrator::run()
         cout << "Error: Video decoder has not been set ! Exiting..." << endl;
         return false;
     }
-    
+
     if (nullptr == _videoProcessor.get())
     {
         cout << "Error: Video processor has not been set ! Exiting..." << endl;
@@ -204,22 +223,23 @@ bool Orchestrator::run()
 
         // Feeds the work buffer in a separate thread
         _videoDecoder->decode(_videoSource,
-            _buffer,
-            *_videoProcessor);
+                              _buffer,
+                              *_videoProcessor);
 
         string windowTitle = "Processed video playback";
         // Processes the frames from the buffer in a separate thead
         _videoProcessor->process(windowTitle,
-            _buffer,
-            *_statsCounter);
-        
+                                 _buffer,
+                                 *_statsCounter);
+
         while (true)
-        {             
+        {
             auto key = getchar();
-            //waitKey(100);
+            // waitKey(100);
             cout << "Enter: p,P - print | Enter: q,Q - Exit" << endl;
 
-            switch (key) {
+            switch (key)
+            {
             case 'q':
             case 'Q':
             {
@@ -236,13 +256,12 @@ bool Orchestrator::run()
                 break;
             }
         }
-        
     }
-    catch (Exception& ex)
+    catch (Exception &ex)
     {
         cout << "Open CV exception ! Error when processing the video: " << ex.what() << endl;
     }
-    catch (std::exception& ex)
+    catch (std::exception &ex)
     {
         cout << "Error when processing the video: " << ex.what() << endl;
     }

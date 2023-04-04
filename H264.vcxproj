@@ -154,10 +154,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Lomtec_H264.cpp" />
+    <ClCompile Include="H264.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Lomtec_H264.h" />
+    <ClInclude Include="H264.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
