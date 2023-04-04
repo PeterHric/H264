@@ -4,11 +4,11 @@ This is a simple demo of Video files processing with OpenCV with C++
 
 Run in the release directory:
 
-*Lomtec_H264.exe file_name.mp4*
+*H264.exe file_name.mp4*
 
 or
 
-*Lomtec_H264.exe -h  for help*
+*H264.exe -h  for help*
 
 You will need to install OpenCV and copy .dll these files to the folder, where you run it:
 
