@@ -10,7 +10,7 @@ or
 
 *Lomtec_H264.exe -h  for help*
 
-You will need to install OpenCV and copy .dll these files to the folder, where you run it:
+You will need to install OpenCV and copy these .dll files to the folder, before running:
 
 *opencv_world440.dll*
 
